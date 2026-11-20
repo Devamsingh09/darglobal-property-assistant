@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Iterator
 
@@ -16,6 +17,15 @@ SOURCE_LABEL = {"darglobal": "DarGlobal", "wasalt": "Wasalt"}
 ROUTES = {"docs", "listings", "both", "chitchat", "off_topic"}
 
 
+_DATE_LINE = re.compile(r"^(\d{2}/\d{2}/\d{4})$", re.M)
+
+
+def _label_dates(text: str) -> str:
+    """Article pages start with a bare DD/MM/YYYY line; say what it is so the model
+    doesn't take it as the date of the events the article describes."""
+    return _DATE_LINE.sub(lambda m: f"(article published {m.group(1)})", text, count=1)
+
+
 def _history_text(history: list[dict]) -> str:
     return "\n".join(f"{m['role'].upper()}: {m['content'][:800]}" for m in history) or "(no earlier messages)"
 
@@ -26,7 +36,7 @@ def plan(question: str, history: list[dict]) -> dict:
                                         f"Latest user message: {question}"}]
     try:
         text, model = llm.complete(
-            msgs, temperature=0.0, max_tokens=1200,
+            msgs, temperature=0.0, max_tokens=700, router=True,
             validate=lambda t: (llm.parse_json(t) or {}).get("route") in ROUTES)
         p = llm.parse_json(text) or {}
     except llm.LLMUnavailable:
@@ -75,7 +85,7 @@ def build_context(route: str, standalone: str, queries: list[str], filters: dict
             c = h["chunk"]
             n += 1
             label = f"{SOURCE_LABEL.get(c.source, c.source)} · {c.kind}"
-            blocks.append(f"[{n}] ({label}) {c.title or ''} — {c.url}\n{c.text}")
+            blocks.append(f"[{n}] ({label}) {c.title or ''} — {c.url}\n{_label_dates(c.text)}")
             sources.append({"n": n, "title": c.title or c.url, "url": c.url,
                             "source": SOURCE_LABEL.get(c.source, c.source), "kind": c.kind})
     return "\n\n".join(blocks), sources, cards, trace
@@ -116,7 +126,7 @@ def run_turn(session_id: str, question: str) -> Iterator[dict]:
         yield {"type": "error", "message": "The language model is temporarily unavailable "
                "(free-tier limit or outage). Please try again in a minute.", "detail": str(e)[:200]}
         return
-    full = "".join(answer).strip()
+    full = llm.clean_citations("".join(answer).strip())
     memory.add(session_id, "user", question)
     memory.add(session_id, "assistant", full)
     yield {"type": "done", "model": model, "router_model": p["router_model"],

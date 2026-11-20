@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import config, memory
+from . import config, llm, memory
 from .chat import run_turn
 from .listings import LISTINGS
 from .retrieval import KB
@@ -76,8 +76,11 @@ def health():
         manifest = json.loads((config.DATA_DIR / "manifest.json").read_text(encoding="utf-8"))
     except Exception:
         pass
-    return {"ready": KB.ready, "llm_configured": bool(config.OPENROUTER_API_KEY),
-            "models": config.MODEL_CHAIN, "data": manifest}
+    return {"ready": KB.ready, "llm_configured": llm.any_configured(),
+            "providers": {p: llm.configured(p + ":x") for p in llm.PROVIDERS},
+            "models": [m for m in config.MODEL_CHAIN if llm.configured(m)],
+            "router_models": [m for m in config.ROUTER_CHAIN if llm.configured(m)],
+            "data": manifest}
 
 
 @app.post("/api/chat")
@@ -110,6 +113,7 @@ def chat_sync(req: ChatIn, request: Request):
             out.update({k: v for k, v in ev.items() if k != "type"})
             if ev["type"] == "error":
                 out["error"] = ev["message"]
+    out["answer"] = llm.clean_citations(out["answer"])
     return out
 
 

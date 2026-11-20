@@ -10,7 +10,9 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
-      - key: OPENROUTER_API_KEY
+      - key: GROQ_API_KEY
         sync: false          # entered once in the Render dashboard, never committed
+      - key: OPENROUTER_API_KEY
+        sync: false
       - key: ONNX_THREADS
         value: "1"

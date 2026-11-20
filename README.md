@@ -1,6 +1,6 @@
 # Property Assistant: DarGlobal × Wasalt RAG chatbot
 
-An AI chatbot that answers questions about **DarGlobal** projects and the company, and finds **Wasalt** property listings. It uses data scraped from the two public websites and a free model on OpenRouter. The backend runs in Docker on Render's free tier and the frontend is on Vercel.
+An AI chatbot that answers questions about **DarGlobal** projects and the company, and finds **Wasalt** property listings. It uses data scraped from the two public websites and free LLMs (gpt-oss on Groq, with OpenRouter free models as fallback). The backend runs in Docker on Render's free tier and the frontend is on Vercel.
 
 | | URL |
 |---|---|
@@ -50,8 +50,15 @@ Only **2 LLM calls per question**. Search, fusion, reranking and de-duplication 
 ### Router
 Call 1 also classifies the question and extracts filters `{city, district, type, purpose, beds_min/max, price_min/max, area_min, sort}`. The model never writes SQL. Values are matched against what exists in the DB, then placed into a fixed parameterised query. If nothing matches, filters are relaxed step by step, and the answer says which ones were relaxed. A city with no data returns "no listings for X" rather than silently searching everywhere.
 
-### Free-model resilience
-`MODEL_CHAIN` holds several OpenRouter `:free` models. On a 429, 404, 5xx or timeout, the request moves to the next model, and the failed one cools down for 60 s. If every configured model disappears, the backend re-reads OpenRouter's catalogue and uses whatever free models exist now.
+### Models and free-tier resilience
+Two free, OpenAI-compatible providers are configured, and each call walks a fallback chain:
+
+| Call | Chain (in order) |
+|---|---|
+| 1. Router (rewrite + route JSON) | Groq `openai/gpt-oss-20b` → Groq `openai/gpt-oss-120b` → OpenRouter `:free` models |
+| 2. Answer (streamed) | Groq `openai/gpt-oss-120b` → Groq `openai/gpt-oss-20b` → OpenRouter `:free` models (Nemotron, Gemma, Ling…) |
+
+On a 429, 404, 5xx, timeout or unparseable router JSON, the request moves to the next model. The failed model cools down for 60 s, or for 30 min if the provider reports a daily limit. Providers without an API key are skipped, so either key alone is enough. If the configured OpenRouter models disappear, the backend re-reads OpenRouter's catalogue and adds whatever free models exist. Chains can be overridden with the `ROUTER_CHAIN` and `MODEL_CHAIN` env vars (`provider:model,...`).
 
 ## Data collected
 
@@ -88,7 +95,7 @@ python -m scraper.darglobal        # ~15 min
 python -m scraper.wasalt           # stops politely if blocked
 python pipeline/build.py           # builds backend/data/
 
-cd backend && OPENROUTER_API_KEY=sk-or-... uvicorn app.main:app --port 7860
+cd backend && GROQ_API_KEY=gsk_... OPENROUTER_API_KEY=sk-or-... uvicorn app.main:app --port 7860
 # frontend: open frontend/index.html?api=http://localhost:7860  (or: python -m http.server -d frontend)
 python scripts/smoke_test.py
 ```
@@ -96,7 +103,7 @@ python scripts/smoke_test.py
 With Docker:
 ```bash
 docker build -t property-assistant backend
-docker run -p 7860:7860 -e OPENROUTER_API_KEY=sk-or-... property-assistant
+docker run -p 7860:7860 -e GROQ_API_KEY=gsk_... -e OPENROUTER_API_KEY=sk-or-... property-assistant
 ```
 
 ## Deployment

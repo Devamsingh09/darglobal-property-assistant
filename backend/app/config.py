@@ -20,13 +20,23 @@ ONNX_THREADS = int(os.getenv("ONNX_THREADS", "1"))   # free hosts give ~0.1-1 vC
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-# Tried in order; a 429 / 404 / 5xx / timeout moves to the next one.
-MODEL_CHAIN = [m.strip() for m in os.getenv(
-    "MODEL_CHAIN",
-    "nvidia/nemotron-3.5-super-vl:free,google/gemma-4-31b-it:free,"
-    "inclusionai/ling-3.2-flash:free,nvidia/nemotron-3.5-lightning:free,"
-    "google/gemma-4-26b-a4b-it:free,baidu/ernie-5.5-flash-preview:free",
-).split(",") if m.strip()]
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+
+_OPENROUTER_FREE = ("openrouter:nvidia/nemotron-3.5-super-vl:free,openrouter:google/gemma-4-31b-it:free,"
+                    "openrouter:inclusionai/ling-3.2-flash:free,openrouter:nvidia/nemotron-3.5-lightning:free")
+
+
+def _chain(env: str, default: str) -> list[str]:
+    return [m.strip() for m in os.getenv(env, default).split(",") if m.strip()]
+
+
+# "provider:model", tried in order; a 429 / 5xx / timeout moves to the next one.
+# Entries whose provider has no key are skipped.
+MODEL_CHAIN = _chain("MODEL_CHAIN",            # answers: strongest first
+                     "groq:openai/gpt-oss-120b,groq:openai/gpt-oss-20b," + _OPENROUTER_FREE)
+ROUTER_CHAIN = _chain("ROUTER_CHAIN",          # query rewrite + routing JSON: small and fast
+                      "groq:openai/gpt-oss-20b,groq:openai/gpt-oss-120b," + _OPENROUTER_FREE)
 LLM_TIMEOUT_S = float(os.getenv("LLM_TIMEOUT_S", "45"))
 
 # Comma-separated list of allowed browser origins, or * for any.

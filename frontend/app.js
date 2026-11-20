@@ -19,7 +19,9 @@
 
   function renderMarkdown(text, sources) {
     const byN = Object.fromEntries((sources || []).map((s) => [String(s.n), s]));
-    let html = DOMPurify.sanitize(marked.parse(text || ""), { ADD_ATTR: ["target"] });
+    // some models cite as 【1†L1-L4】: normalise to [1], and hide a half-streamed one at the end
+    text = (text || "").replace(/【\s*(\d+)\s*(?:†[^】]*)?】/g, "[$1]").replace(/【[^】]*$/, "");
+    let html = DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ["target"] });
     // [1] or [1][2] or [1, 2] -> superscript links to the source
     html = html.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (m, nums) =>
       nums.split(/\s*,\s*/).map((n) => byN[n]
