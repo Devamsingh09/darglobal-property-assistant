@@ -1,0 +1,23 @@
+{
+  "built_at": "2026-11-19T18:17:39Z",
+  "embed_model": "BAAI/bge-small-en-v1.5",
+  "n_chunks": 3188,
+  "n_projects": 27,
+  "n_listings": 80,
+  "chunk_kinds": {
+    "darglobal:page": 151,
+    "darglobal:project": 231,
+    "darglobal:faq": 139,
+    "darglobal:one_of_one": 18,
+    "darglobal:partner": 45,
+    "darglobal:insight": 75,
+    "darglobal:press": 282,
+    "darglobal:blog": 2156,
+    "wasalt:faq": 8,
+    "wasalt:overview": 3,
+    "wasalt:listing": 80
+  },
+  "listing_cities": {
+    "Riyadh": 80
+  }
+}

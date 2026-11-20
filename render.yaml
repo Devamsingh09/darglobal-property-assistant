@@ -1,0 +1,16 @@
+# Render Blueprint: free Docker web service for the backend API.
+# Deploy: https://render.com/deploy?repo=<this repo's GitHub URL>
+services:
+  - type: web
+    name: dg-property-assistant-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false          # entered once in the Render dashboard, never committed
+      - key: ONNX_THREADS
+        value: "1"

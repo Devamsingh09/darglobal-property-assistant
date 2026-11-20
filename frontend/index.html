@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Property Assistant · DarGlobal × Wasalt</title>
+  <meta name="description" content="AI assistant over public DarGlobal project data and Wasalt property listings.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23173A5E'/%3E%3Cpath d='M8 23V13l8-5 8 5v10h-5v-6h-6v6z' fill='%23E9C46A'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path d="M8 23V13l8-5 8 5v10h-5v-6h-6v6z"/></svg>
+        <div>
+          <h1>Property Assistant</h1>
+          <p class="sub">DarGlobal projects · Wasalt listings</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="status" class="status" title="Backend status"><i></i><span>Connecting…</span></span>
+        <button id="newChat" class="btn ghost" type="button">New chat</button>
+      </div>
+    </header>
+
+    <main id="log" class="log" aria-live="polite">
+      <section id="welcome" class="welcome">
+        <h2>Ask about luxury projects or Saudi listings</h2>
+        <p>Answers come from data collected from the public <b>darglobal.co.uk</b> and <b>wasalt.sa</b> websites, with numbered sources you can open.</p>
+        <div class="chips" id="chips">
+          <button type="button">What is The Astera and what unit sizes does it offer?</button>
+          <button type="button">Which DarGlobal projects are partnered with Trump?</button>
+          <button type="button">Show me 3-bedroom apartments for sale in Riyadh under 1M SAR</button>
+          <button type="button">What are the benefits of investing in Ras Al Khaimah?</button>
+          <button type="button">What does Wasalt offer and how many listings does it have?</button>
+          <button type="button">Tell me about DarGlobal's London Stock Exchange listing</button>
+        </div>
+        <div id="stats" class="stats"></div>
+      </section>
+    </main>
+
+    <form id="composer" class="composer" autocomplete="off">
+      <textarea id="input" rows="1" maxlength="2000" placeholder="Ask about a project, a city, a budget…" aria-label="Message"></textarea>
+      <button id="send" class="btn primary" type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg>
+      </button>
+    </form>
+    <p class="foot">Demo on scraped public data · not an official DarGlobal or Wasalt channel · verify details on the official sites</p>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
