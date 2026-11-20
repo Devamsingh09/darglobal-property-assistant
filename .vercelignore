@@ -1,0 +1,7 @@
+# Only the static frontend/ folder is deployed to Vercel; the API runs on Render.
+backend/
+pipeline/
+scraper/
+scripts/
+data/
+render.yaml
