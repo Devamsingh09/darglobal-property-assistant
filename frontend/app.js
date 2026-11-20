@@ -93,13 +93,47 @@
     ui.meta = meta;
   }
 
+  // ---------- typewriter: Groq streams ~500 tokens/s, so a whole answer lands in a few
+  // network bursts. Buffer it and reveal at a steady reading pace instead.
+  const TYPE_CPS = 90;      // base speed, characters per second
+  const CATCH_UP_S = 3;     // a large backlog speeds up so it clears in about this many seconds
+  function makeTyper(render) {
+    let target = "", shown = 0, carry = 0, last = 0, raf = null, ended = false, onDone = null;
+    const step = (t) => {
+      const dt = last ? Math.min(t - last, 100) : 16; last = t;
+      const backlog = target.length - shown;
+      if (backlog > 0) {
+        if (document.hidden) { shown = target.length; }      // background tab: no animation
+        else {
+          carry += Math.max(TYPE_CPS, backlog / CATCH_UP_S) * dt / 1000;
+          const n = Math.floor(carry); carry -= n;
+          shown = Math.min(target.length, shown + n);
+        }
+        render(target.slice(0, shown));
+      }
+      if (shown < target.length) { raf = requestAnimationFrame(step); return; }
+      raf = null; last = 0;
+      if (ended && onDone) onDone();
+    };
+    return {
+      push(s) { target += s; if (!raf) raf = requestAnimationFrame(step); },
+      finish() {                       // resolves once everything received has been shown
+        ended = true;
+        return new Promise((res) => { onDone = res; if (!raf) { if (shown < target.length) raf = requestAnimationFrame(step); else res(); } });
+      },
+      flush() { if (raf) cancelAnimationFrame(raf); raf = null; shown = target.length; if (target) render(target); },
+      get text() { return target; },
+    };
+  }
+
   async function ask(text) {
     if (busy || !text.trim()) return;
     busy = true; send.disabled = true;
     $("#welcome")?.remove();
     addUser(text);
     const ui = addBot();
-    let answer = "";
+    const typer = makeTyper((t) => { ui.bubble.innerHTML = renderMarkdown(t, ui.meta?.sources); scrollDown(); });
+    let answer = "", doneInfo = null;
     try {
       const res = await fetch(`${API}/api/chat`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -122,16 +156,17 @@
           if (!line.startsWith("data:")) continue;
           const ev = JSON.parse(line.slice(5));
           if (ev.type === "meta") showMeta(ui, ev);
-          else if (ev.type === "token") { answer += ev.text; ui.bubble.innerHTML = renderMarkdown(answer, ui.meta?.sources); scrollDown(); }
+          else if (ev.type === "token") { answer += ev.text; typer.push(ev.text); }
           else if (ev.type === "error") throw new Error(ev.message);
-          else if (ev.type === "done") {
-            const d = el("div", "route", `<span>${esc(ev.model || "")} · ${(ev.ms / 1000).toFixed(1)} s</span>`);
-            ui.m.appendChild(d);
-          }
+          else if (ev.type === "done") doneInfo = ev;
         }
       }
+      await typer.finish();
       if (!answer) ui.bubble.innerHTML = "<p>No answer came back. Please try again.</p>";
+      if (doneInfo) ui.m.appendChild(el("div", "route",
+        `<span>${esc(doneInfo.model || "")} · ${(doneInfo.ms / 1000).toFixed(1)} s</span>`));
     } catch (e) {
+      typer.flush();
       if (!answer) ui.bubble.remove();
       ui.m.appendChild(el("div", "error", esc(e.message || "Network error. Check that the backend is running.")));
     } finally {
